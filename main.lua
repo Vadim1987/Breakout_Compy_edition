@@ -167,18 +167,25 @@ function select_hit_obj(dt)
   return bt, bo, bi
 end
 
+function process_win()
+  for _, b in ipairs(bricks) do
+    if b.pos.y < GRID.bot_y then
+      return 
+    end
+  end
+  GS.mode = "win"
+  GS.assets.text_info:set("YOU WIN!")
+  sfx.win()
+  love.mouse.setRelativeMode(false)
+end
+
 function process_hit(t, obj, idx, t_sim)
   local t_imp = t_sim + t
   move_ball_time(t_imp)
   bounce(ball, obj, HIT_NORMAL)
   if obj.destruct then
     table.remove(bricks, idx)
-    if #bricks <= GRID.lives_cols then
-      GS.mode = "win"
-      GS.assets.text_info:set("YOU WIN! Press R")
-      sfx.win()
-      love.mouse.setRelativeMode(false)
-    end
+    process_win()
   end
   sync_phys(t_imp)
 end
