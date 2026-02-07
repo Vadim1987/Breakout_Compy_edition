@@ -18,26 +18,26 @@ function make_brick(x, y, w, color)
   }
 end
 
-function add_row(list, r, col_main, col_dim)
+function add_row(list, r, color)
   local y = GRID.start_y + (r - 1) * GRID.ch
   for c = 1, GRID.cols do
-    local color = ((c + r) % 2 == 0) and col_main or col_dim
+    local colors = Color[color + Color.bright * ((c + r) % 2)]
     local x = (c - 1) * GRID.cw
-    table.insert(list, make_brick(x, y, GRID.cw, color))
+    table.insert(list, make_brick(x, y, GRID.cw, colors))
   end
 end
 
 function gen_grid(list)
-  add_row(list, 1, COLOR_R, COLOR_R_DIM)
-  add_row(list, 2, COLOR_Y, COLOR_Y_DIM)
-  add_row(list, 3, COLOR_G, COLOR_G_DIM)
-  add_row(list, 4, COLOR_B, COLOR_B_DIM)
+  add_row(list, 1, Color.red)
+  add_row(list, 2, Color.yellow)
+  add_row(list, 3, Color.green)
+  add_row(list, 4, Color.blue)
 end
 
 function gen_lives(list)
   local y = GRID.bot_y
   for c = 1, GRID.lives_cols do
-    local color = (c % 2 == 0) and COLOR_M_DIM or COLOR_M
+    local color = Color[Color.magenta + Color.bright * (c % 2)]
     local x = (c - 1) * GRID.life_w
     table.insert(list, make_brick(x, y, GRID.life_w, color))
   end

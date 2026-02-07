@@ -30,11 +30,11 @@ paddle = {
     y = PADDLE.h
   },
   vel = zero2d(),
-  color = COLOR_PAD
+  color = Color[Color.cyan]
 }
 
 ball = {
-  color = COLOR_BALL,
+  color = Color[Color.white + Color.bright],
   pos = zero2d(),
   vel = zero2d(),
   radius = BALL.radius,
@@ -249,11 +249,6 @@ actions.win.space = actions.play.r
 
 -- Drawing 
 
-function draw_background()
-  gfx.setColor(COLOR_FIELD)
-  gfx.rectangle("fill", 0, 0, GAME.width, GAME.height)
-end
-
 function draw_rectangle(obj)
   local p, s = obj.pos, obj.size
   gfx.setColor(obj.color)
@@ -273,7 +268,6 @@ function draw_ball()
 end
 
 function draw_objs()
-  draw_background()
   draw_bricks_and_paddle()
   draw_ball()
 end
@@ -304,7 +298,7 @@ function love.draw()
   if GS.init then
     gfx.push()
     gfx.applyTransform(GS.tf)
-    gfx.clear(COLOR_BG)
+    gfx.clear(Color[Color.black])
     draw_objs()
     draw_ui()
     gfx.pop()
