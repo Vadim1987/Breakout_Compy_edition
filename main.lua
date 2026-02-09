@@ -207,7 +207,6 @@ function check_game_over(b)
   if GAME.height < b.pos.y then
     GS.mode = "over"
     GS.assets.text_info:set("GAME OVER")
-    love.mouse.setRelativeMode(false)
     sfx.gameover()
   end
 end
