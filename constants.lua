@@ -5,8 +5,8 @@
 GAME = {
   width = 640,
   height = 480,
-  launch_spd = 350,
-  pad_spd = 450,
+  launch_speed = 350,
+  paddle_speed = 450,
   sensitivity = 0.5
 }
 
@@ -16,27 +16,26 @@ GRID = {
   cols = 16,
   rows = 4,
   lives_cols = 8,
-  top_empty = 2,
-  pad_empty = 1
+  top_empty_rows = 2
 }
 
--- Auto-calculate sizes
+-- Auto-calculate bricks sizes
 
-GRID.cw = GAME.width / GRID.cols
-GRID.ch = GRID.cw / 2
-GRID.life_w = GRID.cw * 2
+GRID.brick_width = GAME.width / GRID.cols
+GRID.brick_height = GRID.brick_width / 2
+GRID.life_width = GRID.brick_width * 2
 
 -- Vertical offsets
 
-GRID.start_y = GRID.ch * GRID.top_empty
-GRID.bot_y = GAME.height - GRID.ch
+GRID.start_y = GRID.brick_height * GRID.top_empty_rows
+GRID.bottom_y = GAME.height - GRID.brick_height
 
 -- Paddle Geometry 
 
 PADDLE = {
-  w = GRID.cw * 2,
-  h = GRID.ch,
-  y = GAME.height - (GRID.ch * 3)
+  width = GRID.brick_width * 2,
+  height = GRID.brick_height,
+  y = GAME.height - (GRID.brick_height * 3)
 }
 
 BALL = { radius = 6 }

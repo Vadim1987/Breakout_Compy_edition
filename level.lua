@@ -2,51 +2,53 @@
 
 level = { }
 
-function make_brick(x, y, color, is_t)
+function make_brick(x, y, color, is_target)
   return {
     pos = {
       x = x,
       y = y
     },
     size = {
-      x = (is_t and GRID.cw or GRID.life_w),
-      y = GRID.ch
+      x = (is_target and GRID.brick_width or GRID.life_width),
+      y = GRID.brick_height
     },
     vel = zero2d(),
     color = color,
     destruct = true,
-    is_target = is_t
+    is_target = is_target
   }
 end
 
-function add_row(list, r, color)
-  local y = GRID.start_y + (r - 1) * GRID.ch
+function add_row(list, row, base_col)
+  local y = GRID.start_y + (row - 1) * GRID.brick_height
   for c = 1, GRID.cols do
-    local colors = Color[color + Color.bright * ((c + r) % 2)]
-    local x = (c - 1) * GRID.cw
-    table.insert(list, make_brick(x, y, colors, true))
+    local c_index = base_col + Color.bright * ((c + row) % 2)
+    local x = (c - 1) * GRID.brick_width
+    local b = make_brick(x, y, Color[c_index], true)
+    table.insert(list, b)
   end
 end
 
-function gen_grid(list)
+function target_bricks(list)
   add_row(list, 1, Color.red)
   add_row(list, 2, Color.yellow)
   add_row(list, 3, Color.green)
   add_row(list, 4, Color.blue)
 end
 
-function gen_lives(list)
-  local y = GRID.bot_y
+function lives_bricks(list)
+  local y = GRID.bottom_y
   for c = 1, GRID.lives_cols do
-    local color = Color[Color.magenta + Color.bright * (c % 2)]
-    local x = (c - 1) * GRID.life_w
-    table.insert(list, make_brick(x, y, color, false))
+    local c_index = Color.magenta + Color.bright * (c % 2)
+    local x = (c - 1) * GRID.life_width
+    table.insert(list, make_brick(x, y, Color[c_index], false))
   end
 end
 
 function level.generate()
   local list = { }
-  gen_grid(list)
-  gen_lives(list)
+  target_bricks(list)
+  lives_bricks(list)
+  list.target = GRID.cols * GRID.rows
   return list
 end

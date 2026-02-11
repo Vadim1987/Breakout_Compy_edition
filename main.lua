@@ -8,26 +8,27 @@ sfx = compy.audio
 gfx = love.graphics
 timer = love.timer
 
--- Game State 
+-- Game State
 
 GS = {
-  init = false,
   mode = "start",
-  tf = nil
+  tf = nil,
+  init = false
 }
 
 GS.assets = { text_info = nil }
+
 GS.mouse = zero2d()
 
 HIT_NORMAL = zero2d()
 
--- Entities 
+-- Entities
 
 paddle = {
   pos = zero2d(),
   size = {
-    x = PADDLE.w,
-    y = PADDLE.h
+    x = PADDLE.width,
+    y = PADDLE.height
   },
   vel = zero2d(),
   color = Color[Color.cyan]
@@ -42,13 +43,13 @@ ball = {
   st = 0
 }
 
--- Helpers 
+-- Helpers
 
-function get_key_dir(key_check, pos, neg)
-  if key_check(pos) then
+function get_key_dir(k_pos, k_neg)
+  if love.keyboard.isDown(k_pos) then
     return 1
   end
-  if key_check(neg) then
+  if love.keyboard.isDown(k_neg) then
     return -1
   end
   return 0
@@ -65,10 +66,8 @@ end
 
 function update_scale()
   local w, h = gfx.getDimensions()
-  GS.tf = love.math.newTransform():scale(
-    w / GAME.width,
-    h / GAME.height
-  )
+  GS.tf = love.math.newTransform()
+  GS.tf:scale(w / GAME.width, h / GAME.height)
 end
 
 function sync_phys(now)
@@ -82,7 +81,7 @@ function move_ball_time(t_target)
   integrate_pos(ball.pos, ball.vel, dt)
 end
 
--- Init Functions 
+-- Init Functions
 
 function reset_ball_pos()
   ball.pos.x = paddle.pos.x + paddle.size.x / 2
@@ -92,16 +91,15 @@ end
 
 function init_level()
   bricks = level.generate()
-  bricks.target = GRID.cols * GRID.rows
-  paddle.pos.x = (GAME.width - PADDLE.w) / 2
+  paddle.pos.x = (GAME.width - PADDLE.width) / 2
   paddle.pos.y = PADDLE.y
   paddle.vel.x, paddle.vel.y = 0, 0
 end
 
-function reset_round(now)
+function reset_round()
   init_level()
   reset_ball_pos()
-  sync_phys(now)
+  sync_phys(timer.getTime())
   GS.mode = "start"
   GS.assets.text_info:set("Press Space")
   love.mouse.setRelativeMode(true)
@@ -116,21 +114,17 @@ function ensure_init()
   if not GS.init then
     update_scale()
     init_assets()
-    reset_round(timer.getTime())
+    reset_round()
     GS.init = true
   end
 end
 
--- Logic 
+-- Logic
 
 function process_input(dt)
   if GS.mouse.x == 0 then
-    local dx = get_key_dir(
-      love.keyboard.isDown,
-      "right",
-      "left"
-    )
-    paddle.vel.x = dx * GAME.pad_spd
+    local dx = get_key_dir("right", "left")
+    paddle.vel.x = dx * GAME.paddle_speed
   else
     paddle.vel.x = (GS.mouse.x * GAME.sensitivity) / dt
     GS.mouse.x = 0
@@ -139,17 +133,15 @@ end
 
 function constrain_paddle(dt)
   integrate_pos(paddle.pos, paddle.vel, dt)
+  local max_x = GAME.width - paddle.size.x
   if paddle.pos.x < 0 then
-    paddle.pos.x = 0
-    paddle.vel.x = 0
-  end
-  if GAME.width - paddle.size.x < paddle.pos.x then
-    paddle.pos.x = GAME.width - paddle.size.x
-    paddle.vel.x = 0
+    paddle.pos.x, paddle.vel.x = 0, 0
+  elseif max_x < paddle.pos.x then
+    paddle.pos.x, paddle.vel.x = max_x, 0
   end
 end
 
--- Physics Loop 
+-- Game Loop
 
 function select_hit_obj(dt)
   local bt, bo, bi
@@ -159,40 +151,44 @@ function select_hit_obj(dt)
     copy_vector(HIT_NORMAL, n)
   end
   for i, b in ipairs(bricks) do
-    local t_brk, n_brk = detect(ball, b, dt)
-    if t_brk and (not bt or t_brk < bt) then
-      bt, bo, bi = t_brk, b, i
-      copy_vector(HIT_NORMAL, n_brk)
+    local tb, nb = detect(ball, b, dt)
+    if tb and (not bt or tb < bt) then
+      bt, bo, bi = tb, b, i
+      copy_vector(HIT_NORMAL, nb)
     end
   end
   return bt, bo, bi
 end
 
-function process_hit(t, obj, idx, t_sim)
-  move_ball_time(t_sim + t)
-  bounce(ball, obj, HIT_NORMAL)
-  if obj.destruct then
-    table.remove(bricks, idx)
-    if obj.is_target then
-      bricks.target = bricks.target - 1
-    end
+function destroy_brick(b, idx)
+  table.remove(bricks, idx)
+  if b.is_target then
+    bricks.target = bricks.target - 1
     if bricks.target == 0 then
       GS.mode = "win"
       GS.assets.text_info:set("YOU WIN!")
       sfx.win()
     end
   end
-  sync_phys(t_sim + t)
 end
 
--- Boundary Logic 
+function process_hit(t, obj, idx, t_sim)
+  local t_hit = t_sim + t
+  move_ball_time(t_hit)
+  bounce(ball, obj, HIT_NORMAL)
+  if idx then
+    destroy_brick(obj, idx)
+  end
+  sync_phys(t_hit)
+end
 
 function check_bounds(b, now)
   local r, hit = b.radius, false
+  local max_x = GAME.width - r
   if b.pos.x < r then
     b.pos.x, b.vel.x, hit = r, -b.vel.x, true
-  elseif GAME.width - r < b.pos.x then
-    b.pos.x, b.vel.x, hit = GAME.width - r, -b.vel.x, true
+  elseif b.pos.x > max_x then
+    b.pos.x, b.vel.x, hit = max_x, -b.vel.x, true
   end
   if b.pos.y < r then
     b.pos.y, b.vel.y, hit = r, -b.vel.y, true
@@ -222,55 +218,44 @@ function update_ball(dt, now)
   check_game_over(ball)
 end
 
--- Controls 
+-- Controls
 
-actions = {
-  start = { },
-  play = { },
-  over = { },
-  win = { }
-}
-
-function actions.start.space()
-  local dir_x = (love.math.random(2) == 1) and 1 or -1
-  ball.vel.y = -GAME.launch_spd
-  ball.vel.x = paddle.vel.x + (GAME.launch_spd * dir_x)
+function action_launch()
+  local dir = (love.math.random(2) == 1) and 1 or -1
+  ball.vel.y = -GAME.launch_speed
+  ball.vel.x = paddle.vel.x + (GAME.launch_speed * dir)
   GS.mode = "play"
   sfx.beep()
 end
 
-actions.play.r = function() 
-  reset_round(timer.getTime()) 
-end
+actions = {
+  start = { space = action_launch },
+  play = { r = reset_round },
+  over = { space = reset_round },
+  win = { space = reset_round }
+}
 
-actions.over.r = actions.play.r
-actions.over.space = actions.play.r
-actions.win.r = actions.play.r
-actions.win.space = actions.play.r
+updaters = {
+  start = reset_ball_pos,
+  play = update_ball
+}
 
--- Drawing 
+-- Drawing
 
-function draw_rectangle(obj)
-  local p, s = obj.pos, obj.size
+function draw_rect(obj)
+  local x, y = obj.pos.x, obj.pos.y
+  local w, h = obj.size.x, obj.size.y
   gfx.setColor(obj.color)
-  gfx.rectangle("fill", p.x, p.y, s.x, s.y)
-end
-
-function draw_bricks_and_paddle()
-  for _, brick in ipairs(bricks) do
-    draw_rectangle(brick)
-  end
-  draw_rectangle(paddle)
-end
-
-function draw_ball()
-  gfx.setColor(ball.color)
-  gfx.circle("fill", ball.pos.x, ball.pos.y, ball.radius)
+  gfx.rectangle("fill", x, y, w, h)
 end
 
 function draw_objs()
-  draw_bricks_and_paddle()
-  draw_ball()
+  for _, b in ipairs(bricks) do
+    draw_rect(b)
+  end
+  draw_rect(paddle)
+  gfx.setColor(ball.color)
+  gfx.circle("fill", ball.pos.x, ball.pos.y, ball.radius)
 end
 
 function draw_ui()
@@ -281,17 +266,15 @@ function draw_ui()
   end
 end
 
--- Main Loop 
+-- Main Loop
 
 function love.update(dt)
   ensure_init()
   local now = timer.getTime()
   process_input(dt)
   constrain_paddle(dt)
-  if GS.mode == "start" then
-    reset_ball_pos()
-  elseif GS.mode == "play" then
-    update_ball(dt, now)
+  if updaters[GS.mode] then
+    updaters[GS.mode](dt, now)
   end
 end
 
@@ -310,18 +293,16 @@ function love.mousemoved(_, _, dx, _)
   GS.mouse.x = GS.mouse.x + dx
 end
 
-function love.mousepressed(_, _, button)
-  if button == 1 and actions[GS.mode]
-       and actions[GS.mode].space
-  then
-    actions[GS.mode].space()
+function love.mousepressed(_, _, btn)
+  local act = actions[GS.mode]
+  if btn == 1 and act and act.space then
+    act.space()
   end
 end
 
 function love.keypressed(k)
-  local action = actions[GS.mode][k]
-  if action then
-    action()
+  if actions[GS.mode] and actions[GS.mode][k] then
+    actions[GS.mode][k]()
   end
   if k == "escape" then
     love.event.quit()
